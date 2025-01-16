@@ -2,25 +2,55 @@
 
 FROM ghcr.io/linuxserver/baseimage-kasmvnc:ubuntunoble
 
+
 # set version label
 ARG BUILD_DATE
 ARG VERSION
-ARG CALIBRE_RELEASE
+ARG LIBATION_RELEASE
 LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="aptalca"
+LABEL maintainer="git-lemur"
 
 ENV \
   CUSTOM_PORT="8080" \
   CUSTOM_HTTPS_PORT="8181" \
   HOME="/config" \
-  TITLE="Calibre" \
+  TITLE="Libation" \
   QTWEBENGINE_DISABLE_SANDBOX="1"
+
+RUN \
+  echo "**** build clientside ****" && \
+  export QT_QPA_PLATFORM=offscreen && \
+  export QT_QPA_FONTDIR=/usr/share/fonts && \
+  mkdir /src && \
+  cd /src && \
+  wget https://github.com/kasmtech/noVNC/tarball/${KASMWEB_RELEASE} -O - \
+    | tar  --strip-components=1 -xz && \
+  npm install && \
+  npm run-script build
+
+RUN \
+  echo "**** organize output ****" && \
+  mkdir /build-out && \
+  cd /src && \
+  rm -rf node_modules/ && \
+  cp -R ./* /build-out/ && \
+  cd /build-out && \
+  rm *.md && \
+  rm AUTHORS && \
+  cp index.html vnc.html && \
+  mkdir Downloads
+
+FROM ghcr.io/linuxserver/baseimage-alpine:3.21 AS buildstage
+
+ARG KASMVNC_RELEASE="e04731870baebd2784983fb48197a2416c7d3519"
+
+COPY --from=wwwstage /build-out /www
 
 RUN \
   echo "**** add icon ****" && \
   curl -o \
-    /kclient/public/icon.png \
-    https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/calibre-icon.png && \
+    /kclient/public/icon.svg \
+    https://raw.githubusercontent.com/rmcrackan/Libation/refs/heads/master/Images/libation_glass.svg && \
   echo "**** install runtime packages ****" && \
   apt-get update && \
   apt-get install -y --no-install-recommends \
@@ -46,21 +76,19 @@ RUN \
     xz-utils && \
   apt-get install -y \
     speech-dispatcher && \
-  echo "**** install calibre ****" && \
+  echo "**** install libation ****" && \
   mkdir -p \
-    /opt/calibre && \
-  if [ -z ${CALIBRE_RELEASE+x} ]; then \
-    CALIBRE_RELEASE=$(curl -sX GET "https://api.github.com/repos/kovidgoyal/calibre/releases/latest" \
+    /opt/libation && \
+  if [ -z ${LIBATION_RELEASE+x} ]; then \
+    LIBATION_RELEASE=$(curl -sX GET "https://api.github.com/repos/rmcrackan/Libation/releases/latest" \
     | jq -r .tag_name); \
   fi && \
-  CALIBRE_VERSION="$(echo ${CALIBRE_RELEASE} | cut -c2-)" && \
-  CALIBRE_URL="https://download.calibre-ebook.com/${CALIBRE_VERSION}/calibre-${CALIBRE_VERSION}-x86_64.txz" && \
+  LIBATION_VERSION="$(echo ${LIBATION_RELEASE} | cut -c2-)" && \
+  LIBATION_URL="https://github.com/rmcrackan/Libation/releases/download/v${LIBATION_VERSION}/Libation.${LIBATION_VERSION}-linux-chardonnay-amd64.deb" && \
   curl -o \
-    /tmp/calibre-tarball.txz -L \
-    "$CALIBRE_URL" && \
-  tar xvf /tmp/calibre-tarball.txz -C \
-    /opt/calibre && \
-  /opt/calibre/calibre_postinstall && \
+    /tmp/libation.deb -L \
+    "$LIBATION_URL" && \
+  dpkg -i /tmp/libation.deb && \
   dbus-uuidgen > /etc/machine-id && \
   printf "Linuxserver.io version: ${VERSION}\nBuild-date: ${BUILD_DATE}" > /build_version && \
   echo "**** cleanup ****" && \
@@ -71,4 +99,4 @@ RUN \
     /var/tmp/*
 
 # add local files
-COPY root/ /
+COPY /root /
