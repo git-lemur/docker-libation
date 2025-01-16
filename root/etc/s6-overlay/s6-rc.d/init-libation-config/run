@@ -4,10 +4,6 @@
 # make our folders
 mkdir -p /config/.config/libation
 
-# set webserver port on first install
-if [[ ! -f /config/.config/libation/server-config.txt ]]; then
-    echo "port 8081" > /config/.config/libation/server-config.txt
-fi
 
 # default file copies first run
 if [[ ! -f /config/.config/openbox/menu.xml ]]; then
