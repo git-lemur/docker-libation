@@ -18,35 +18,6 @@ ENV \
   QTWEBENGINE_DISABLE_SANDBOX="1"
 
 RUN \
-  echo "**** build clientside ****" && \
-  export QT_QPA_PLATFORM=offscreen && \
-  export QT_QPA_FONTDIR=/usr/share/fonts && \
-  mkdir /src && \
-  cd /src && \
-  wget https://github.com/kasmtech/noVNC/tarball/${KASMWEB_RELEASE} -O - \
-    | tar  --strip-components=1 -xz && \
-  npm install && \
-  npm run-script build
-
-RUN \
-  echo "**** organize output ****" && \
-  mkdir /build-out && \
-  cd /src && \
-  rm -rf node_modules/ && \
-  cp -R ./* /build-out/ && \
-  cd /build-out && \
-  rm *.md && \
-  rm AUTHORS && \
-  cp index.html vnc.html && \
-  mkdir Downloads
-
-FROM ghcr.io/linuxserver/baseimage-alpine:3.21 AS buildstage
-
-ARG KASMVNC_RELEASE="e04731870baebd2784983fb48197a2416c7d3519"
-
-COPY --from=wwwstage /build-out /www
-
-RUN \
   echo "**** add icon ****" && \
   curl -o \
     /kclient/public/icon.svg \
